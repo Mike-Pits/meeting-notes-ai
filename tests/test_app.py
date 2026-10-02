@@ -447,3 +447,27 @@ def test_document_exact_size_boundary(client, monkeypatch):
         f"/api/meetings/{m['id']}/files", files={"file": ("exact.txt", b"0123456789")}
     )
     assert response.status_code == 200 and response.json()["text"] == "0123456789"
+
+
+@pytest.mark.parametrize("seconds, accepted", [(3601, True), (7200, True), (7201, False)])
+@pytest.mark.parametrize("suffix", [".wav", ".webm"])
+def test_two_hour_audio_boundary(tmp_path, monkeypatch, seconds, accepted, suffix):
+    from types import SimpleNamespace
+    from app import imports
+
+    def run(command, **kwargs):
+        if command[0] == "ffprobe":
+            return SimpleNamespace(returncode=0, stdout=json.dumps({
+                "streams": [{"codec_type": "audio"}],
+                "format": {"format_name": "webm" if suffix == ".webm" else "wav",
+                           "duration": 0 if suffix == ".webm" else seconds},
+            }).encode())
+        assert command[command.index("-t") + 1] == "7201"
+        return SimpleNamespace(returncode=0, stdout=f"out_time_us={seconds * 1_000_000}\n".encode())
+
+    monkeypatch.setattr(imports.subprocess, "run", run)
+    if accepted:
+        assert imports.audio_duration(tmp_path / ("meeting" + suffix), suffix) == seconds
+    else:
+        with pytest.raises(ValueError, match="120 минут"):
+            imports.audio_duration(tmp_path / ("meeting" + suffix), suffix)

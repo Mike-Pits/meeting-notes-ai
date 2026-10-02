@@ -98,7 +98,7 @@ def audio_duration(path: Path, suffix: str):
                 "-i",
                 str(path),
                 "-t",
-                "3601",
+                "7201",
                 "-progress",
                 "pipe:1",
                 "-f",
@@ -114,6 +114,6 @@ def audio_duration(path: Path, suffix: str):
             if line.startswith("out_time_us=") and line.split("=")[1].isdigit()
         ]
         duration = max(times, default=0) / 1_000_000
-    if not 0 < duration <= 3600:
-        raise ValueError("Аудио должно длиться от 1 секунды до 60 минут.")
+    if not 0 < duration <= 7200:
+        raise ValueError("Аудио должно длиться от 1 секунды до 120 минут.")
     return duration
